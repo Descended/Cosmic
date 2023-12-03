@@ -133,6 +133,23 @@ public class AbstractPlayerInteraction {
         warpParty(id, portalId, mapid, mapid);
     }
 
+    public void warpParty(int map, String portalName) {
+
+        int mapid = getMapId();
+        var warpMap = c.getChannelServer().getMapFactory().getMap(map);
+
+        var portal = warpMap.getPortal(portalName);
+
+        if (portal == null) {
+            portal = warpMap.getPortal(0);
+        }
+
+        var portalId = portal.getId();
+
+        warpParty(map, portalId, mapid, mapid);
+
+    }
+
     public void warpParty(int id, int fromMinId, int fromMaxId) {
         warpParty(id, 0, fromMinId, fromMaxId);
     }
@@ -274,7 +291,7 @@ public class AbstractPlayerInteraction {
         int size = Math.min(itemids.size(), quantity.size());
 
         List<List<Pair<Integer, Integer>>> invList = new ArrayList<>(6);
-        for (int i = InventoryType.UNDEFINED.getType(); i < InventoryType.CASH.getType(); i++) {
+        for (int i = InventoryType.UNDEFINED.getType(); i <= InventoryType.CASH.getType(); i++) {
             invList.add(new LinkedList<>());
         }
 
