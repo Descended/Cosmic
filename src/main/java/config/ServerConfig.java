@@ -68,7 +68,6 @@ public class ServerConfig {
     public boolean USE_MTS;
     public boolean USE_CPQ;
     public boolean USE_AUTOHIDE_GM;
-    public boolean USE_BUYBACK_SYSTEM;
     public boolean USE_FIXED_RATIO_HPMP_UPDATE;
     public boolean USE_FAMILY_SYSTEM;
     public boolean USE_DUEY;
@@ -98,7 +97,6 @@ public class ServerConfig {
     public boolean USE_ENFORCE_MERCHANT_SAVE;
     public boolean USE_ENFORCE_MDOOR_POSITION;
     public boolean USE_SPAWN_CLEAN_MDOOR;
-    public boolean USE_SPAWN_LOOT_ON_ANIMATION;
     public boolean USE_SPAWN_RELEVANT_LOOT;
     public boolean USE_ERASE_PERMIT_ON_OPENSHOP;
     public boolean USE_ERASE_UNTRADEABLE_DROP;
@@ -106,10 +104,8 @@ public class ServerConfig {
     public boolean USE_BUFF_MOST_SIGNIFICANT;
     public boolean USE_BUFF_EVERLASTING;
     public boolean USE_MULTIPLE_SAME_EQUIP_DROP;
-    public boolean USE_BANISHABLE_TOWN_SCROLL;
     public boolean USE_ENABLE_FULL_RESPAWN;
     public boolean USE_ENABLE_CHAT_LOG;
-    public boolean USE_REBIRTH_SYSTEM;
     public boolean USE_MAP_OWNERSHIP_SYSTEM;
     public boolean USE_FISHING_SYSTEM;
     public boolean USE_NPCS_SCRIPTABLE;
@@ -134,10 +130,6 @@ public class ServerConfig {
     //Maker Configuration
     public boolean USE_MAKER_PERMISSIVE_ATKUP;
     public boolean USE_MAKER_FEE_HEURISTICS;
-
-    //Custom Configuration
-    public boolean USE_ENABLE_CUSTOM_NPC_SCRIPT;
-    public boolean USE_STARTER_MERGE;
 
     //Commands Configuration
     public boolean BLOCK_GENERATE_CASH_ITEM;
@@ -167,7 +159,6 @@ public class ServerConfig {
     public long NAME_CHANGE_COOLDOWN;
     public long WORLD_TRANSFER_COOLDOWN = NAME_CHANGE_COOLDOWN;//Cooldown for world tranfers, default is same as name change (30 days).
     public boolean INSTANT_NAME_CHANGE;
-    public int REBIRTH_NPC_ID;
 
     //Dangling Items/Locks Configuration
     public int ITEM_EXPIRE_TIME;
@@ -195,7 +186,6 @@ public class ServerConfig {
     public boolean USE_PERFECT_SCROLLING;
     public boolean USE_ENHANCED_CHSCROLL;
     public boolean USE_ENHANCED_CRAFTING;
-    public boolean USE_ENHANCED_CLNSLATE;
     public int SCROLL_CHANCE_ROLLS;
     public int CHSCROLL_STAT_RATE;
     public int CHSCROLL_STAT_RANGE;
@@ -245,7 +235,6 @@ public class ServerConfig {
     public boolean USE_EQUIPMNT_LVLUP_SLOTS;
     public boolean USE_EQUIPMNT_LVLUP_POWER;
     public boolean USE_EQUIPMNT_LVLUP_CASH;
-    public boolean USE_SPIKES_AVOID_BANISH;
     public int MAX_EQUIPMNT_LVLUP_STAT_UP;
     public int MAX_EQUIPMNT_STAT;
     public int USE_EQUIPMNT_LVLUP;
@@ -295,14 +284,6 @@ public class ServerConfig {
     public int WEDDING_BLESS_EXP;
     public int WEDDING_GIFT_LIMIT;
     public boolean WEDDING_BLESSER_SHOWFX;
-
-    //Buyback Configuration
-    public boolean USE_BUYBACK_WITH_MESOS;
-    public float BUYBACK_FEE;
-    public float BUYBACK_LEVEL_STACK_FEE;
-    public int BUYBACK_MESO_MULTIPLIER;
-    public int BUYBACK_RETURN_MINUTES;
-    public int BUYBACK_COOLDOWN_MINUTES;
 
     // Login timeout by shavit
     public long TIMEOUT_DURATION;

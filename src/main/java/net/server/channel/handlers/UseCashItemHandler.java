@@ -22,10 +22,22 @@
 package net.server.channel.handlers;
 
 import client.Character;
-import client.*;
-import client.creator.veteran.*;
-import client.inventory.*;
+import client.Client;
+import client.Skill;
+import client.SkillFactory;
+import client.SkillMacro;
+import client.creator.veteran.BowmanCreator;
+import client.creator.veteran.MagicianCreator;
+import client.creator.veteran.PirateCreator;
+import client.creator.veteran.ThiefCreator;
+import client.creator.veteran.WarriorCreator;
+import client.inventory.Equip;
 import client.inventory.Equip.ScrollResult;
+import client.inventory.Inventory;
+import client.inventory.InventoryType;
+import client.inventory.Item;
+import client.inventory.ModifyInventory;
+import client.inventory.Pet;
 import client.inventory.manipulator.InventoryManipulator;
 import client.inventory.manipulator.KarmaManipulator;
 import client.processor.npc.DueyProcessor;
@@ -46,7 +58,12 @@ import server.ItemInformationProvider;
 import server.Shop;
 import server.ShopFactory;
 import server.TimerManager;
-import server.maps.*;
+import server.maps.AbstractMapObject;
+import server.maps.FieldLimit;
+import server.maps.Kite;
+import server.maps.MapleMap;
+import server.maps.MapleTVEffect;
+import server.maps.PlayerShopItem;
 import service.NoteService;
 import tools.PacketCreator;
 import tools.Pair;
@@ -228,10 +245,10 @@ public final class UseCashItemHandler extends AbstractPacketHandler {
                     return;
                 }
                 short flag = eq.getFlag();
-                flag |= ItemConstants.LOCK;
-                if (eq.getExpiration() > -1) {
+                if (eq.getExpiration() > -1 && (eq.getFlag() & ItemConstants.LOCK) != ItemConstants.LOCK) {
                     return; //No perma items pls
                 }
+                flag |= ItemConstants.LOCK;
                 eq.setFlag(flag);
 
                 long period = 0;
@@ -246,7 +263,8 @@ public final class UseCashItemHandler extends AbstractPacketHandler {
                 }
 
                 if (period > 0) {
-                    eq.setExpiration(currentServerTime() + DAYS.toMillis(period));
+                    long expiration = eq.getExpiration() > -1 ? eq.getExpiration() : currentServerTime();
+                    eq.setExpiration(expiration + DAYS.toMillis(period));
                 }
 
                 // double-remove found thanks to BHB

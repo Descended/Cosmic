@@ -24,8 +24,16 @@ package client;
 
 import client.autoban.AutobanManager;
 import client.creator.CharacterFactoryRecipe;
-import client.inventory.*;
-import client.inventory.Equip.StatUpgrade;
+import client.inventory.Equip;
+import client.inventory.Inventory;
+import client.inventory.InventoryProof;
+import client.inventory.InventoryType;
+import client.inventory.Item;
+import client.inventory.ItemFactory;
+import client.inventory.ModifyInventory;
+import client.inventory.Pet;
+import client.inventory.PetDataFactory;
+import client.inventory.WeaponType;
 import client.inventory.manipulator.CashIdGenerator;
 import client.inventory.manipulator.InventoryManipulator;
 import client.keybind.KeyBinding;
@@ -40,7 +48,35 @@ import constants.id.ItemId;
 import constants.id.MapId;
 import constants.id.MobId;
 import constants.inventory.ItemConstants;
-import constants.skills.*;
+import constants.skills.Aran;
+import constants.skills.Beginner;
+import constants.skills.Bishop;
+import constants.skills.BlazeWizard;
+import constants.skills.Bowmaster;
+import constants.skills.Brawler;
+import constants.skills.Buccaneer;
+import constants.skills.Corsair;
+import constants.skills.Crusader;
+import constants.skills.DarkKnight;
+import constants.skills.DawnWarrior;
+import constants.skills.Evan;
+import constants.skills.FPArchMage;
+import constants.skills.Hermit;
+import constants.skills.Hero;
+import constants.skills.ILArchMage;
+import constants.skills.Legend;
+import constants.skills.Magician;
+import constants.skills.Marauder;
+import constants.skills.Marksman;
+import constants.skills.NightLord;
+import constants.skills.Noblesse;
+import constants.skills.Paladin;
+import constants.skills.Priest;
+import constants.skills.Ranger;
+import constants.skills.Shadower;
+import constants.skills.Sniper;
+import constants.skills.ThunderBreaker;
+import constants.skills.Warrior;
 import net.packet.Packet;
 import net.server.PlayerBuffValueHolder;
 import net.server.PlayerCoolDownValueHolder;
@@ -52,39 +88,98 @@ import net.server.guild.GuildCharacter;
 import net.server.guild.GuildPackets;
 import net.server.services.task.world.CharacterSaveService;
 import net.server.services.type.WorldServices;
-import net.server.world.*;
+import net.server.world.Messenger;
+import net.server.world.MessengerCharacter;
+import net.server.world.Party;
+import net.server.world.PartyCharacter;
+import net.server.world.PartyOperation;
+import net.server.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.AbstractPlayerInteraction;
 import scripting.event.EventInstanceManager;
 import scripting.item.ItemScriptManager;
-import server.*;
+import server.CashShop;
+import server.ExpLogger;
 import server.ExpLogger.ExpLogRecord;
+import server.ItemInformationProvider;
 import server.ItemInformationProvider.ScriptedItem;
+import server.Marriage;
+import server.Shop;
+import server.StatEffect;
+import server.Storage;
+import server.ThreadManager;
+import server.TimerManager;
+import server.Trade;
 import server.events.Events;
 import server.events.RescueGaga;
 import server.events.gm.Fitness;
 import server.events.gm.Ola;
-import server.life.*;
-import server.maps.*;
+import server.life.BanishInfo;
+import server.life.MobSkill;
+import server.life.MobSkillFactory;
+import server.life.MobSkillId;
+import server.life.MobSkillType;
+import server.life.Monster;
+import server.life.PlayerNPC;
+import server.maps.AbstractAnimatedMapObject;
+import server.maps.Door;
+import server.maps.DoorObject;
+import server.maps.Dragon;
+import server.maps.FieldLimit;
+import server.maps.HiredMerchant;
+import server.maps.MapEffect;
+import server.maps.MapItem;
+import server.maps.MapManager;
+import server.maps.MapObject;
+import server.maps.MapObjectType;
+import server.maps.MapleMap;
+import server.maps.MiniGame;
 import server.maps.MiniGame.MiniGameResult;
+import server.maps.PlayerShop;
+import server.maps.PlayerShopItem;
+import server.maps.Portal;
+import server.maps.SavedLocation;
+import server.maps.SavedLocationType;
+import server.maps.Summon;
 import server.minigame.RockPaperScissor;
 import server.partyquest.AriantColiseum;
 import server.partyquest.MonsterCarnival;
 import server.partyquest.MonsterCarnivalParty;
 import server.partyquest.PartyQuest;
 import server.quest.Quest;
-import tools.*;
-import tools.exceptions.NotEnabledException;
+import tools.DatabaseConnection;
+import tools.LongTool;
+import tools.PacketCreator;
+import tools.Pair;
+import tools.Randomizer;
 import tools.packets.WeddingPackets;
 
 import java.awt.*;
 import java.lang.ref.WeakReference;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.EnumMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.*;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -94,7 +189,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static java.util.concurrent.TimeUnit.*;
+import static java.util.concurrent.TimeUnit.DAYS;
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class Character extends AbstractCharacterObject {
     private static final Logger log = LoggerFactory.getLogger(Character.class);
@@ -128,7 +225,7 @@ public class Character extends AbstractCharacterObject {
     private int expRate = 1, mesoRate = 1, dropRate = 1, expCoupon = 1, mesoCoupon = 1, dropCoupon = 1;
     private int omokwins, omokties, omoklosses, matchcardwins, matchcardties, matchcardlosses;
     private int owlSearch;
-    private long lastfametime, lastUsedCashItem, lastExpression = 0, lastHealed, lastBuyback = 0, lastDeathtime, jailExpiration = -1;
+    private long lastfametime, lastUsedCashItem, lastExpression = 0, lastHealed, lastDeathtime, jailExpiration = -1;
     private transient int localstr, localdex, localluk, localint_, localmagic, localwatk;
     private transient int equipmaxhp, equipmaxmp, equipstr, equipdex, equipluk, equipint_, equipmagic, equipwatk, localchairhp, localchairmp;
     private int localchairrate;
@@ -169,7 +266,7 @@ public class Character extends AbstractCharacterObject {
     private final Pet[] pets = new Pet[3];
     private PlayerShop playerShop = null;
     private Shop shop = null;
-    private SkinColor skinColor = SkinColor.NORMAL;
+    private SkinColor skinColor = SkinColor.LIGHT;
     private Storage storage = null;
     private Trade trade = null;
     private MonsterBook monsterbook;
@@ -254,9 +351,6 @@ public class Character extends AbstractCharacterObject {
     private int targetHpBarHash = 0;
     private long targetHpBarTime = 0;
     private long nextWarningTime = 0;
-    private int banishMap = -1;
-    private int banishSp = -1;
-    private long banishTime = 0;
     private long lastExpGainTime;
     private boolean pendingNameChange; //only used to change name on logout, not to be relied upon elsewhere
     private long loginTime;
@@ -1258,48 +1352,14 @@ public class Character extends AbstractCharacterObject {
         }
     }
 
-    public boolean canRecoverLastBanish() {
-        return System.currentTimeMillis() - this.banishTime < MINUTES.toMillis(5);
-    }
-
-    public Pair<Integer, Integer> getLastBanishData() {
-        return new Pair<>(this.banishMap, this.banishSp);
-    }
-
-    public void clearBanishPlayerData() {
-        this.banishMap = -1;
-        this.banishSp = -1;
-        this.banishTime = 0;
-    }
-
-    public void setBanishPlayerData(int banishMap, int banishSp, long banishTime) {
-        this.banishMap = banishMap;
-        this.banishSp = banishSp;
-        this.banishTime = banishTime;
-    }
-
-    public void changeMapBanish(int mapid, String portal, String msg) {
-        if (YamlConfig.config.server.USE_SPIKES_AVOID_BANISH) {
-            for (Item it : this.getInventory(InventoryType.EQUIPPED).list()) {
-                if ((it.getFlag() & ItemConstants.SPIKES) == ItemConstants.SPIKES) {
-                    return;
-                }
-            }
-        }
-
-        int banMap = this.getMapId();
-        int banSp = this.getMap().findClosestPlayerSpawnpoint(this.getPosition()).getId();
-        long banTime = System.currentTimeMillis();
-
-        if (msg != null) {
-            dropMessage(5, msg);
+    public void changeMapBanish(BanishInfo banishInfo) {
+        if (banishInfo.msg() != null) {
+            dropMessage(5, banishInfo.msg());
         }
 
         MapleMap map_ = getWarpMap(mapid);
-        Portal portal_ = map_.getPortal(portal);
+        Portal portal_ = map_.getPortal(banishInfo.portal());
         changeMap(map_, portal_ != null ? portal_ : map_.getRandomPlayerSpawnpoint());
-
-        setBanishPlayerData(banMap, banSp, banTime);
     }
 
     public void changeMap(int map) {
@@ -1682,7 +1742,6 @@ public class Character extends AbstractCharacterObject {
         this.mapTransitioning.set(true);
 
         this.unregisterChairBuff();
-        this.clearBanishPlayerData();
         Trade.cancelTrade(this, Trade.TradeResult.UNSUCCESSFUL_ANOTHER_MAP);
         this.closePlayerInteractions();
 
@@ -1970,7 +2029,7 @@ public class Character extends AbstractCharacterObject {
                                 this.getCashShop().gainCash(1, nxGain);
 
                                 if (YamlConfig.config.server.USE_ANNOUNCE_NX_COUPON_LOOT) {
-                                    showHint("You have earned #e#b" + nxGain + " NX#k#n. (" + this.getCashShop().getCash(1) + " NX)", 300);
+                                    showHint("You have earned #e#b" + nxGain + " NX#k#n. (" + this.getCashShop().getCash(CashShop.NX_CREDIT) + " NX)", 300);
                                 }
 
                                 this.getMap().pickItemDrop(pickupPacket, mapitem);
@@ -2022,7 +2081,7 @@ public class Character extends AbstractCharacterObject {
                         this.getCashShop().gainCash(1, nxGain);
 
                         if (YamlConfig.config.server.USE_ANNOUNCE_NX_COUPON_LOOT) {
-                            showHint("You have earned #e#b" + nxGain + " NX#k#n. (" + this.getCashShop().getCash(1) + " NX)", 300);
+                            showHint("You have earned #e#b" + nxGain + " NX#k#n. (" + this.getCashShop().getCash(CashShop.NX_CREDIT) + " NX)", 300);
                         }
                     } else if (applyConsumeOnPickup(mItem.getItemId())) {
                     } else if (InventoryManipulator.addFromDrop(client, mItem, true)) {
@@ -2318,7 +2377,7 @@ public class Character extends AbstractCharacterObject {
                 ps.executeUpdate();
             }
 
-            String[] toDel = {"famelog", "inventoryitems", "keymap", "queststatus", "savedlocations", "trocklocations", "skillmacros", "skills", "eventstats", "server_queue"};
+            String[] toDel = {"famelog", "inventoryitems", "keymap", "queststatus", "savedlocations", "trocklocations", "skillmacros", "skills", "eventstats" };
             for (String s : toDel) {
                 Character.deleteWhereCharacterId(con, "DELETE FROM `" + s + "` WHERE characterid = ?", cid);
             }
@@ -5965,7 +6024,8 @@ public class Character extends AbstractCharacterObject {
             sendPacket(PacketCreator.giveBuff(energybar, 0, stat));
             sendPacket(PacketCreator.showOwnBuffEffect(energycharge.getId(), 2));
             getMap().broadcastPacket(this, PacketCreator.showBuffEffect(id, energycharge.getId(), 2));
-            getMap().broadcastPacket(this, PacketCreator.giveForeignBuff(energybar, stat));
+            getMap().broadcastPacket(this, PacketCreator.giveForeignPirateBuff(id, energycharge.getId(),
+                    ceffect.getDuration(), stat));
         }
         if (energybar >= 10000 && energybar < 11000) {
             energybar = 15000;
@@ -6054,98 +6114,11 @@ public class Character extends AbstractCharacterObject {
         }
     }
 
-    private boolean canBuyback(int fee, boolean usingMesos) {
-        return (usingMesos ? this.getMeso() : cashshop.getCash(1)) >= fee;
-    }
-
-    private void applyBuybackFee(int fee, boolean usingMesos) {
-        if (usingMesos) {
-            this.gainMeso(-fee);
-        } else {
-            cashshop.gainCash(1, -fee);
-        }
-    }
-
-    private long getNextBuybackTime() {
-        return lastBuyback + MINUTES.toMillis(YamlConfig.config.server.BUYBACK_COOLDOWN_MINUTES);
-    }
-
-    private boolean isBuybackInvincible() {
-        return Server.getInstance().getCurrentTime() - lastBuyback < 4200;
-    }
-
-    private int getBuybackFee() {
-        float fee = YamlConfig.config.server.BUYBACK_FEE;
-        int grade = Math.min(Math.max(level, 30), 120) - 30;
-
-        fee += (grade * YamlConfig.config.server.BUYBACK_LEVEL_STACK_FEE);
-        if (YamlConfig.config.server.USE_BUYBACK_WITH_MESOS) {
-            fee *= YamlConfig.config.server.BUYBACK_MESO_MULTIPLIER;
-        }
-
-        return (int) Math.floor(fee);
-    }
-
-    public void showBuybackInfo() {
-        String s = "#eBUYBACK STATUS#n\r\n\r\nCurrent buyback fee: #b" + getBuybackFee() + " " + (YamlConfig.config.server.USE_BUYBACK_WITH_MESOS ? "mesos" : "NX") + "#k\r\n\r\n";
-
-        long timeNow = Server.getInstance().getCurrentTime();
-        boolean avail = true;
-        if (!isAlive()) {
-            long timeLapsed = timeNow - lastDeathtime;
-            long timeRemaining = MINUTES.toMillis(YamlConfig.config.server.BUYBACK_RETURN_MINUTES) - (timeLapsed + Math.max(0, getNextBuybackTime() - timeNow));
-            if (timeRemaining < 1) {
-                s += "Buyback #e#rUNAVAILABLE#k#n";
-                avail = false;
-            } else {
-                s += "Buyback countdown: #e#b" + getTimeRemaining(MINUTES.toMillis(YamlConfig.config.server.BUYBACK_RETURN_MINUTES) - timeLapsed) + "#k#n";
-            }
-            s += "\r\n";
-        }
-
-        if (timeNow < getNextBuybackTime() && avail) {
-            s += "Buyback available in #r" + getTimeRemaining(getNextBuybackTime() - timeNow) + "#k";
-            s += "\r\n";
-        } else {
-            s += "Buyback #bavailable#k";
-        }
-
-        this.showHint(s);
-    }
-
     private static String getTimeRemaining(long timeLeft) {
         int seconds = (int) Math.floor(timeLeft / SECONDS.toMillis(1)) % 60;
         int minutes = (int) Math.floor(timeLeft / MINUTES.toMillis(1)) % 60;
 
         return (minutes > 0 ? (String.format("%02d", minutes) + " minutes, ") : "") + String.format("%02d", seconds) + " seconds";
-    }
-
-    public boolean couldBuyback() {  // Ronan's buyback system
-        long timeNow = Server.getInstance().getCurrentTime();
-
-        if (timeNow - lastDeathtime > MINUTES.toMillis(YamlConfig.config.server.BUYBACK_RETURN_MINUTES)) {
-            this.dropMessage(5, "The period of time to decide has expired, therefore you are unable to buyback.");
-            return false;
-        }
-
-        long nextBuybacktime = getNextBuybackTime();
-        if (timeNow < nextBuybacktime) {
-            long timeLeft = nextBuybacktime - timeNow;
-            this.dropMessage(5, "Next buyback available in " + getTimeRemaining(timeLeft) + ".");
-            return false;
-        }
-
-        boolean usingMesos = YamlConfig.config.server.USE_BUYBACK_WITH_MESOS;
-        int fee = getBuybackFee();
-
-        if (!canBuyback(fee, usingMesos)) {
-            this.dropMessage(5, "You don't have " + fee + " " + (usingMesos ? "mesos" : "NX") + " to buyback.");
-            return false;
-        }
-
-        lastBuyback = timeNow;
-        applyBuybackFee(fee, usingMesos);
-        return true;
     }
 
     public boolean isBuffFrom(BuffStat stat, Skill skill) {
@@ -8911,11 +8884,7 @@ public class Character extends AbstractCharacterObject {
         boolean playerDied = false;
         if (hp <= 0) {
             if (oldHp > hp) {
-                if (!isBuybackInvincible()) {
-                    playerDied = true;
-                } else {
-                    hp = 1;
-                }
+                playerDied = true;
             }
         }
 
@@ -9220,245 +9189,6 @@ public class Character extends AbstractCharacterObject {
         } finally {
             inventory[type].unlockInventory();
         }
-    }
-
-    public int sellAllItemsFromName(byte invTypeId, String name) {
-        //player decides from which inventory items should be sold.
-        InventoryType type = InventoryType.getByType(invTypeId);
-
-        Inventory inv = getInventory(type);
-        inv.lockInventory();
-        try {
-            Item it = inv.findByName(name);
-            if (it == null) {
-                return (-1);
-            }
-
-            ItemInformationProvider ii = ItemInformationProvider.getInstance();
-            return (sellAllItemsFromPosition(ii, type, it.getPosition()));
-        } finally {
-            inv.unlockInventory();
-        }
-    }
-
-    public int sellAllItemsFromPosition(ItemInformationProvider ii, InventoryType type, short pos) {
-        int mesoGain = 0;
-
-        Inventory inv = getInventory(type);
-        inv.lockInventory();
-        try {
-            for (short i = pos; i <= inv.getSlotLimit(); i++) {
-                if (inv.getItem(i) == null) {
-                    continue;
-                }
-                mesoGain += standaloneSell(getClient(), ii, type, i, inv.getItem(i).getQuantity());
-            }
-        } finally {
-            inv.unlockInventory();
-        }
-
-        return (mesoGain);
-    }
-
-    private int standaloneSell(Client c, ItemInformationProvider ii, InventoryType type, short slot, short quantity) {
-        if (quantity == 0xFFFF || quantity == 0) {
-            quantity = 1;
-        }
-
-        Inventory inv = getInventory(type);
-        inv.lockInventory();
-        try {
-            Item item = inv.getItem(slot);
-            if (item == null) { //Basic check
-                return (0);
-            }
-
-            int itemid = item.getItemId();
-            if (ItemConstants.isRechargeable(itemid)) {
-                quantity = item.getQuantity();
-            } else if (ItemId.isWeddingToken(itemid) || ItemId.isWeddingRing(itemid)) {
-                return (0);
-            }
-
-            if (quantity < 0) {
-                return (0);
-            }
-            short iQuant = item.getQuantity();
-            if (iQuant == 0xFFFF) {
-                iQuant = 1;
-            }
-
-            if (quantity <= iQuant && iQuant > 0) {
-                InventoryManipulator.removeFromSlot(c, type, (byte) slot, quantity, false);
-                int recvMesos = ii.getPrice(itemid, quantity);
-                if (recvMesos > 0) {
-                    gainMeso(recvMesos, false);
-                    return (recvMesos);
-                }
-            }
-
-            return (0);
-        } finally {
-            inv.unlockInventory();
-        }
-    }
-
-    private static boolean hasMergeFlag(Item item) {
-        return (item.getFlag() & ItemConstants.MERGE_UNTRADEABLE) == ItemConstants.MERGE_UNTRADEABLE;
-    }
-
-    private static void setMergeFlag(Item item) {
-        short flag = item.getFlag();
-        flag |= ItemConstants.MERGE_UNTRADEABLE;
-        flag |= ItemConstants.UNTRADEABLE;
-        item.setFlag(flag);
-    }
-
-    private List<Equip> getUpgradeableEquipped() {
-        List<Equip> list = new LinkedList<>();
-
-        ItemInformationProvider ii = ItemInformationProvider.getInstance();
-        for (Item item : getInventory(InventoryType.EQUIPPED)) {
-            if (ii.isUpgradeable(item.getItemId())) {
-                list.add((Equip) item);
-            }
-        }
-
-        return list;
-    }
-
-    private static List<Equip> getEquipsWithStat(List<Pair<Equip, Map<StatUpgrade, Short>>> equipped, StatUpgrade stat) {
-        List<Equip> equippedWithStat = new LinkedList<>();
-
-        for (Pair<Equip, Map<StatUpgrade, Short>> eq : equipped) {
-            if (eq.getRight().containsKey(stat)) {
-                equippedWithStat.add(eq.getLeft());
-            }
-        }
-
-        return equippedWithStat;
-    }
-
-    public boolean mergeAllItemsFromName(String name) {
-        InventoryType type = InventoryType.EQUIP;
-
-        Inventory inv = getInventory(type);
-        inv.lockInventory();
-        try {
-            Item it = inv.findByName(name);
-            if (it == null) {
-                return false;
-            }
-
-            Map<StatUpgrade, Float> statups = new LinkedHashMap<>();
-            mergeAllItemsFromPosition(statups, it.getPosition());
-
-            List<Pair<Equip, Map<StatUpgrade, Short>>> upgradeableEquipped = new LinkedList<>();
-            Map<Equip, List<Pair<StatUpgrade, Integer>>> equipUpgrades = new LinkedHashMap<>();
-            for (Equip eq : getUpgradeableEquipped()) {
-                upgradeableEquipped.add(new Pair<>(eq, eq.getStats()));
-                equipUpgrades.put(eq, new LinkedList<Pair<StatUpgrade, Integer>>());
-            }
-
-            /*
-            for (Entry<StatUpgrade, Float> es : statups.entrySet()) {
-                System.out.println(es);
-            }
-            */
-
-            for (Entry<StatUpgrade, Float> e : statups.entrySet()) {
-                Double ev = Math.sqrt(e.getValue());
-
-                Set<Equip> extraEquipped = new LinkedHashSet<>(equipUpgrades.keySet());
-                List<Equip> statEquipped = getEquipsWithStat(upgradeableEquipped, e.getKey());
-                float extraRate = (float) (0.2 * Math.random());
-
-                if (!statEquipped.isEmpty()) {
-                    float statRate = 1.0f - extraRate;
-
-                    int statup = (int) Math.ceil((ev * statRate) / statEquipped.size());
-                    for (Equip statEq : statEquipped) {
-                        equipUpgrades.get(statEq).add(new Pair<>(e.getKey(), statup));
-                        extraEquipped.remove(statEq);
-                    }
-                }
-
-                if (!extraEquipped.isEmpty()) {
-                    int statup = (int) Math.round((ev * extraRate) / extraEquipped.size());
-                    if (statup > 0) {
-                        for (Equip extraEq : extraEquipped) {
-                            equipUpgrades.get(extraEq).add(new Pair<>(e.getKey(), statup));
-                        }
-                    }
-                }
-            }
-
-            dropMessage(6, "EQUIPMENT MERGE operation results:");
-            for (Entry<Equip, List<Pair<StatUpgrade, Integer>>> eqpUpg : equipUpgrades.entrySet()) {
-                List<Pair<StatUpgrade, Integer>> eqpStatups = eqpUpg.getValue();
-                if (!eqpStatups.isEmpty()) {
-                    Equip eqp = eqpUpg.getKey();
-                    setMergeFlag(eqp);
-
-                    String showStr = " '" + ItemInformationProvider.getInstance().getName(eqp.getItemId()) + "': ";
-                    String upgdStr = eqp.gainStats(eqpStatups).getLeft();
-
-                    this.forceUpdateItem(eqp);
-
-                    showStr += upgdStr;
-                    dropMessage(6, showStr);
-                }
-            }
-
-            return true;
-        } finally {
-            inv.unlockInventory();
-        }
-    }
-
-    public void mergeAllItemsFromPosition(Map<StatUpgrade, Float> statups, short pos) {
-        Inventory inv = getInventory(InventoryType.EQUIP);
-        inv.lockInventory();
-        try {
-            for (short i = pos; i <= inv.getSlotLimit(); i++) {
-                standaloneMerge(statups, getClient(), InventoryType.EQUIP, i, inv.getItem(i));
-            }
-        } finally {
-            inv.unlockInventory();
-        }
-    }
-
-    private void standaloneMerge(Map<StatUpgrade, Float> statups, Client c, InventoryType type, short slot, Item item) {
-        short quantity;
-        ItemInformationProvider ii = ItemInformationProvider.getInstance();
-        if (item == null || (quantity = item.getQuantity()) < 1 || ii.isCash(item.getItemId()) || !ii.isUpgradeable(item.getItemId()) || hasMergeFlag(item)) {
-            return;
-        }
-
-        Equip e = (Equip) item;
-        for (Entry<StatUpgrade, Short> s : e.getStats().entrySet()) {
-            Float newVal = statups.get(s.getKey());
-
-            float incVal = s.getValue().floatValue();
-            switch (s.getKey()) {
-                case incPAD:
-                case incMAD:
-                case incPDD:
-                case incMDD:
-                    incVal = (float) Math.log(incVal);
-                    break;
-            }
-
-            if (newVal != null) {
-                newVal += incVal;
-            } else {
-                newVal = incVal;
-            }
-
-            statups.put(s.getKey(), newVal);
-        }
-
-        InventoryManipulator.removeFromSlot(c, type, (byte) slot, quantity, false);
     }
 
     public void setShop(Shop shop) {
@@ -10989,70 +10719,6 @@ public class Character extends AbstractCharacterObject {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-    }
-
-    public void setReborns(int value) {
-        if (!YamlConfig.config.server.USE_REBIRTH_SYSTEM) {
-            yellowMessage("Rebirth system is not enabled!");
-            throw new NotEnabledException();
-        }
-
-        try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement("UPDATE characters SET reborns=? WHERE id=?;")) {
-            ps.setInt(1, value);
-            ps.setInt(2, id);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void addReborns() {
-        setReborns(getReborns() + 1);
-    }
-
-    public int getReborns() {
-        if (!YamlConfig.config.server.USE_REBIRTH_SYSTEM) {
-            yellowMessage("Rebirth system is not enabled!");
-            throw new NotEnabledException();
-        }
-
-        try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement("SELECT reborns FROM characters WHERE id=?;")) {
-            ps.setInt(1, id);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                rs.next();
-                return rs.getInt(1);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        throw new RuntimeException();
-    }
-
-    public void executeReborn() {
-        // default to beginner: job id = 0
-        // this prevents a breaking change
-        executeRebornAs(Job.BEGINNER);
-    }
-
-    public void executeRebornAsId(int jobId) {
-        executeRebornAs(Job.getById(jobId));
-    }
-
-    public void executeRebornAs(Job job) {
-        if (!YamlConfig.config.server.USE_REBIRTH_SYSTEM) {
-            yellowMessage("Rebirth system is not enabled!");
-            throw new NotEnabledException();
-        }
-        if (getLevel() != getMaxClassLevel()) {
-            return;
-        }
-        addReborns();
-        changeJob(job);
-        setLevel(0);
-        levelUp(true);
     }
 
     //EVENTS
